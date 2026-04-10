@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Command — <%= v.unit_number || v.vin || 'Vehicle' %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<%- include('partials/nav', { page: 'vehicles', user }) %>
+
+<div class="page-sm">
+  <a href="/vehicles" class="back-link">← Fleet Roster</a>
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">
+        <% if (v.unit_number) { %><span>#<%= v.unit_number %></span> — <% } %>
+        <%= v.year || '' %> <%= v.make || '' %> <%= v.model || '' %>
+        <% if (!v.year && !v.make && v.vin) { %><span><%= v.vin %></span><% } %>
+      </div>
+      <div style="margin-top:0.4rem">
+        <span class="badge badge-<%= v.computed_status %>"><%= v.status_label %></span>
+        <% if (v.leasing_company) { %>
+          <span style="color:var(--text-dim);font-size:0.8rem;margin-left:0.75rem"><%= v.leasing_company %></span>
+        <% } %>
+      </div>
+    </div>
+    <div class="btn-group">
+      <a href="/vehicles/<%= v.id %>/edit" class="btn btn-secondary">✏ Edit</a>
+      <% if (v.status !== 'returned') { %>
+        <form method="POST" action="/vehicles/<%= v.id %>/return" onsubmit="return confirm('Mark this vehicle as returned?')">
+          <button type="submit" class="btn btn-ghost">↩ Return</button>
+        </form>
+      <% } else { %>
+        <form method="POST" action="/vehicles/<%= v.id %>/activate">
+          <button type="submit" class="btn btn-ghost">↺ Reactivate</button>
+        </form>
+      <% } %>
+      <form method="POST" action="/vehicles/<%= v.id %>?_method=DELETE" onsubmit="return confirm('Delete this vehicle permanently?')">
+        <input type="hidden" name="_method" value="DELETE">
+        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Progress Bars -->
+  <div class="card card-sm" style="margin-bottom:1.5rem">
+    <% if (v.time_pct != null) { %>
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>Lease Progress</span>
+        <strong style="color:<%= v.time_pct >= 90 ? 'var(--danger)' : v.time_pct >= 75 ? 'var(--warning)' : 'var(--text)' %>">
+          <%= v.time_pct %>% · <%= v.days_left != null ? (v.days_left < 0 ? 'EXPIRED ' + Math.abs(v.days_left) + 'd ago' : v.days_left + ' days left') : '—' %>
+        </strong>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill <%= v.time_pct >= 90 ? 'danger' : v.time_pct >= 75 ? 'warn' : 'orange' %>"
+             style="width:<%= Math.min(100, v.time_pct) %>%"></div>
+      </div>
+    </div>
+    <% } %>
+    <% if (v.mileage_pct != null) { %>
+    <div class="progress-wrap" style="margin-top:1rem">
+      <div class="progress-label">
+        <span>Mileage Used</span>
+        <strong style="color:<%= v.mileage_pct >= 100 ? 'var(--danger)' : v.mileage_pct >= 90 ? 'var(--warning)' : 'var(--text)' %>">
+          <%= v.mileage_pct %>% — <%= v.mileage_current ? v.mileage_current.toLocaleString() : '—' %> / <%= v.total_allowance ? v.total_allowance.toLocaleString() : '—' %> mi
+        </strong>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill <%= v.mileage_pct >= 100 ? 'danger' : v.mileage_pct >= 90 ? 'warn' : '' %>"
+             style="width:<%= Math.min(100, v.mileage_pct) %>%"></div>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="detail-layout">
+
+    <!-- Left: Key Metrics -->
+    <div>
+      <div class="section-title" style="margin-bottom:0.75rem">Key Metrics</div>
+      <div class="metric-grid" style="margin-bottom:1.5rem">
+        <div class="metric-card <%= v.days_left != null && v.days_left <= 30 ? 'danger' : v.days_left != null && v.days_left <= 60 ? 'orange' : '' %>">
+          <div class="metric-val">
+            <% if (v.days_left != null) { %>
+              <%= v.days_left < 0 ? Math.abs(v.days_left) : v.days_left %>
+            <% } else { %>—<% } %>
+          </div>
+          <div class="metric-label"><%= v.days_left != null && v.days_left < 0 ? 'Days Overdue' : 'Days Left' %></div>
+        </div>
+        <div class="metric-card <%= v.mileage_pct != null && v.mileage_pct >= 100 ? 'danger' : v.mileage_pct != null && v.mileage_pct >= 90 ? 'warning' : 'accent' %>">
+          <div class="metric-val"><%= v.mileage_pct != null ? v.mileage_pct + '%' : '—' %></div>
+          <div class="metric-label">Mileage Used</div>
+        </div>
+        <div class="metric-card orange">
+          <div class="metric-val"><%= v.cost_to_date != null ? formatCurrency(v.cost_to_date) : '—' %></div>
+          <div class="metric-label">Cost to Date</div>
+        </div>
+        <div class="metric-card blue">
+          <div class="metric-val"><%= v.cost_per_mile != null ? '$' + v.cost_per_mile : '—' %></div>
+          <div class="metric-label">Cost / Mile</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val"><%= v.monthly_payment != null ? formatCurrency(v.monthly_payment) : '—' %></div>
+          <div class="metric-label">Monthly Payment</div>
+        </div>
+        <div class="metric-card <%= v.projected_overage > 0 ? 'danger' : '' %>">
+          <div class="metric-val"><%= v.projected_overage != null ? (v.projected_overage > 0 ? '+' + v.projected_overage.toLocaleString() : '0') : '—' %></div>
+          <div class="metric-label">Projected Overage (mi)</div>
+        </div>
+      </div>
+
+      <!-- Projected Final -->
+      <% if (v.projected_final) { %>
+      <div class="card card-sm" style="margin-bottom:0">
+        <div class="section-title" style="margin-bottom:0.5rem">Mileage Projection</div>
+        <div style="font-size:0.85rem;color:var(--text-dim)">
+          At current rate, projected <strong style="color:var(--text)"><%= v.projected_final.toLocaleString() %> mi</strong> at lease end.
+          <% if (v.total_allowance && v.projected_overage > 0) { %>
+            <span style="color:var(--danger);font-weight:700"> Over by <%= v.projected_overage.toLocaleString() %> mi.</span>
+          <% } else if (v.total_allowance) { %>
+            <span style="color:var(--accent);font-weight:700"> Under allowance by <%= (v.total_allowance - v.projected_final).toLocaleString() %> mi.</span>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Right: Vehicle Info -->
+    <div>
+      <div class="section-title" style="margin-bottom:0.75rem">Vehicle Info</div>
+      <div class="card card-sm">
+        <table class="info-table">
+          <tr><td>Unit #</td><td><%= v.unit_number || '—' %></td></tr>
+          <tr><td>VIN</td><td class="mono"><%= v.vin || '—' %></td></tr>
+          <tr><td>Year</td><td><%= v.year || '—' %></td></tr>
+          <tr><td>Make</td><td><%= v.make || '—' %></td></tr>
+          <tr><td>Model</td><td><%= v.model || '—' %></td></tr>
+          <% if (v.trim) { %><tr><td>Trim</td><td><%= v.trim %></td></tr><% } %>
+          <% if (v.color) { %><tr><td>Color</td><td><%= v.color %></td></tr><% } %>
+        </table>
+      </div>
+
+      <div class="section-title" style="margin-bottom:0.75rem;margin-top:1.25rem">Lease Details</div>
+      <div class="card card-sm">
+        <table class="info-table">
+          <tr><td>Leasing Co</td><td><%= v.leasing_company || '—' %></td></tr>
+          <tr><td>Lease Start</td><td><%= formatDate(v.lease_start) %></td></tr>
+          <tr><td>Lease End</td><td><%= formatDate(v.lease_end) %></td></tr>
+          <tr><td>Monthly</td><td style="color:var(--primary);font-weight:700"><%= v.monthly_payment ? formatCurrency(v.monthly_payment) : '—' %></td></tr>
+          <tr><td>Total Value</td><td><%= v.total_lease_value ? formatCurrency(v.total_lease_value) : '—' %></td></tr>
+          <tr><td>Annual Allowance</td><td><%= v.mileage_allowance_annual ? v.mileage_allowance_annual.toLocaleString() + ' mi/yr' : '—' %></td></tr>
+          <tr><td>Total Allowance</td><td><%= v.mileage_allowance_total ? v.mileage_allowance_total.toLocaleString() + ' mi' : (v.total_allowance ? v.total_allowance.toLocaleString() + ' mi (calc)' : '—') %></td></tr>
+          <tr><td>Current Miles</td><td><%= v.mileage_current ? v.mileage_current.toLocaleString() + ' mi' : '—' %></td></tr>
+          <% if (v.insurance_expiry) { %><tr><td>Ins. Expiry</td><td><%= formatDate(v.insurance_expiry) %></td></tr><% } %>
+        </table>
+      </div>
+
+      <div class="section-title" style="margin-bottom:0.75rem;margin-top:1.25rem">Driver / Assignment</div>
+      <div class="card card-sm">
+        <table class="info-table">
+          <tr><td>Driver</td><td><%= v.driver_name || '—' %></td></tr>
+          <tr><td>Email</td><td><%= v.driver_email || '—' %></td></tr>
+          <tr><td>Phone</td><td><%= v.driver_phone || '—' %></td></tr>
+          <tr><td>Department</td><td><%= v.department || '—' %></td></tr>
+        </table>
+      </div>
+
+      <% if (v.notes) { %>
+      <div class="card card-sm" style="margin-top:1.25rem">
+        <div class="section-title" style="margin-bottom:0.5rem">Notes</div>
+        <div style="font-size:0.875rem;color:var(--text-dim);white-space:pre-wrap"><%= v.notes %></div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+</body>
+</html>

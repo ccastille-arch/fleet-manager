@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Command — Upload</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<%- include('partials/nav', { page: 'upload', user }) %>
+
+<div class="page-sm">
+  <div class="page-header">
+    <div>
+      <div class="page-title">UPLOAD <span>FLEET FILE</span></div>
+      <div class="page-sub">CSV or Excel from Enterprise, Ford Fleet, ARI, and others</div>
+    </div>
+  </div>
+
+  <% if (error) { %>
+    <div class="flash flash-error">⚠ <%= error %></div>
+  <% } %>
+  <% if (success) { %>
+    <div class="flash flash-success">✓ <%= success %></div>
+  <% } %>
+
+  <form method="POST" action="/upload" enctype="multipart/form-data" id="uploadForm">
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" name="file" accept=".csv,.xlsx,.xls" onchange="handleFileSelect(this)">
+      <div class="upload-icon">📂</div>
+      <div class="upload-title">DROP FILE HERE</div>
+      <div class="upload-sub">or click to browse — CSV, XLSX, XLS accepted (max 10MB)</div>
+      <button type="button" class="btn btn-primary">Choose File</button>
+      <div class="upload-filename" id="fileName" style="display:none"></div>
+    </div>
+
+    <div id="submitSection" style="display:none;margin-top:1.5rem;text-align:center">
+      <button type="submit" class="btn btn-primary btn-lg">↑ UPLOAD AND PROCESS</button>
+    </div>
+  </form>
+
+  <!-- Column hints -->
+  <div class="card" style="margin-top:2rem">
+    <div class="section-title" style="margin-bottom:1rem">Accepted Column Names</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;font-size:0.82rem">
+
+      <div>
+        <div style="color:var(--secondary);font-weight:700;font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:0.4rem">Vehicle</div>
+        <div class="text-dim">Unit Number, Unit #, Vehicle Number, Fleet Number, Asset Number</div>
+        <div class="text-dim" style="margin-top:0.4rem">VIN, Vehicle Identification Number</div>
+        <div class="text-dim" style="margin-top:0.4rem">Year, Model Year, Make, Model, Trim, Color</div>
+      </div>
+
+      <div>
+        <div style="color:var(--secondary);font-weight:700;font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:0.4rem">Lease</div>
+        <div class="text-dim">Lease Start, Start Date, In-Service Date</div>
+        <div class="text-dim" style="margin-top:0.4rem">Lease End, End Date, Expiration Date, Maturity Date, Return Date</div>
+        <div class="text-dim" style="margin-top:0.4rem">Monthly Payment, Monthly Cost, Payment, Lease Payment</div>
+        <div class="text-dim" style="margin-top:0.4rem">Leasing Company, Lessor, Fleet Company, Provider</div>
+      </div>
+
+      <div>
+        <div style="color:var(--secondary);font-weight:700;font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:0.4rem">Mileage & Driver</div>
+        <div class="text-dim">Mileage Allowance, Annual Mileage, Miles Per Year, Annual Miles</div>
+        <div class="text-dim" style="margin-top:0.4rem">Contract Miles, Total Miles Allowed</div>
+        <div class="text-dim" style="margin-top:0.4rem">Current Mileage, Odometer, Actual Miles, Miles</div>
+        <div class="text-dim" style="margin-top:0.4rem">Driver, Driver Name, Assigned To, Employee, Department, Division, Cost Center</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);font-size:0.8rem;color:var(--text-dim)">
+      <strong style="color:var(--text)">Tip:</strong> Column names are matched automatically — capitalization and spacing don't matter.
+      Existing vehicles are updated by matching on VIN first, then Unit Number.
+      New vehicles are added automatically.
+    </div>
+  </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileName  = document.getElementById('fileName');
+const submitSection = document.getElementById('submitSection');
+
+function handleFileSelect(input) {
+  if (input.files && input.files[0]) {
+    const f = input.files[0];
+    fileName.textContent = '✓ ' + f.name + ' (' + (f.size / 1024).toFixed(0) + ' KB)';
+    fileName.style.display = 'block';
+    submitSection.style.display = 'block';
+  }
+}
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const files = e.dataTransfer.files;
+  if (files.length) {
+    fileInput.files = files;
+    handleFileSelect(fileInput);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Command — Error</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<% if (typeof user !== 'undefined' && user) { %>
+  <%- include('partials/nav', { page: '', user }) %>
+<% } %>
+
+<div class="error-page">
+  <div class="error-box">
+    <div class="error-code">ERR</div>
+    <div class="error-msg"><%= error || 'Something went wrong.' %></div>
+    <div style="margin-top:1.5rem" class="btn-group" style="justify-content:center">
+      <a href="/" class="btn btn-secondary">← Dashboard</a>
+      <a href="/vehicles" class="btn btn-ghost">Fleet</a>
+    </div>
+    <% if (stack) { %>
+      <pre class="error-stack"><%= stack %></pre>
+    <% } %>
+  </div>
+</div>
+</body>
+</html>

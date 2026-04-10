@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Command — Fleet</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<%- include('partials/nav', { page: 'vehicles', user }) %>
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">FLEET <span>ROSTER</span></div>
+      <div class="page-sub"><%= vehicles.length %> vehicles</div>
+    </div>
+    <div class="btn-group">
+      <a href="/upload" class="btn btn-primary">↑ Upload</a>
+      <a href="/vehicles/new" class="btn btn-secondary">+ Add Vehicle</a>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <form method="GET" action="/vehicles" class="filter-bar">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All Statuses</option>
+      <% const statuses = ['active','expiring_30','expiring_60','expiring_90','expired','over_mileage','near_mileage','returned']; %>
+      <% statuses.forEach(s => { %>
+      <option value="<%= s %>" <%= statusFilter === s ? 'selected' : '' %>><%= STATUS_LABELS[s] %></option>
+      <% }) %>
+    </select>
+    <input type="search" name="q" value="<%= q %>" placeholder="Search unit, VIN, driver..." style="min-width:220px">
+    <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+    <% if (statusFilter || q) { %>
+      <a href="/vehicles" class="btn btn-ghost btn-sm">Clear</a>
+    <% } %>
+    <span class="count"><%= vehicles.length %> result<%= vehicles.length !== 1 ? 's' : '' %></span>
+  </form>
+
+  <% if (vehicles.length === 0) { %>
+    <div class="empty-state card">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">NO VEHICLES FOUND</div>
+      <% if (statusFilter || q) { %>
+        <p style="color:var(--text-dim);margin-bottom:1.5rem">Try adjusting your filters.</p>
+        <a href="/vehicles" class="btn btn-secondary">Clear Filters</a>
+      <% } else { %>
+        <p style="color:var(--text-dim);margin-bottom:1.5rem">Upload a fleet file to get started.</p>
+        <a href="/upload" class="btn btn-primary btn-lg">↑ Upload Fleet File</a>
+      <% } %>
+    </div>
+  <% } else { %>
+  <div class="card" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Unit #</th>
+          <th>Vehicle</th>
+          <th>Driver / Dept</th>
+          <th>Leasing Co</th>
+          <th>Lease End</th>
+          <th>Days Left</th>
+          <th>Mileage</th>
+          <th class="text-right">$/mo</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody>
+          <% vehicles.forEach(v => { %>
+          <tr onclick="location.href='/vehicles/<%= v.id %>'" style="cursor:pointer">
+            <td>
+              <a href="/vehicles/<%= v.id %>" onclick="event.stopPropagation()">
+                <%= v.unit_number || '—' %>
+              </a>
+              <% if (v.vin) { %><div class="mono text-dim"><%= v.vin.slice(-6) %></div><% } %>
+            </td>
+            <td>
+              <strong><%= v.year || '' %> <%= v.make || '' %> <%= v.model || '' %></strong>
+              <% if (v.color) { %><div class="text-dim" style="font-size:0.78rem"><%= v.color %></div><% } %>
+            </td>
+            <td>
+              <div><%= v.driver_name || '—' %></div>
+              <% if (v.department) { %><div class="text-dim" style="font-size:0.78rem"><%= v.department %></div><% } %>
+            </td>
+            <td class="text-dim"><%= v.leasing_company || '—' %></td>
+            <td>
+              <% if (v.lease_end) { %>
+                <div><%= formatDate(v.lease_end) %></div>
+              <% } else { %>
+                <span class="text-dim">—</span>
+              <% } %>
+            </td>
+            <td>
+              <% if (v.days_left != null) { %>
+                <span style="color:<%= v.days_left < 0 ? 'var(--danger)' : v.days_left <= 30 ? 'var(--danger)' : v.days_left <= 60 ? 'var(--primary)' : 'var(--text)' %>; font-weight:700">
+                  <%= v.days_left < 0 ? 'EXPIRED' : v.days_left + 'd' %>
+                </span>
+              <% } else { %><span class="text-dim">—</span><% } %>
+            </td>
+            <td>
+              <% if (v.mileage_pct != null) { %>
+                <div style="width:80px">
+                  <div class="progress-bar" style="height:4px">
+                    <div class="progress-fill <%= v.mileage_pct >= 100 ? 'danger' : v.mileage_pct >= 90 ? 'warn' : '' %>"
+                         style="width:<%= Math.min(100, v.mileage_pct) %>%"></div>
+                  </div>
+                  <div style="font-size:0.7rem;color:var(--text-dim);margin-top:2px"><%= v.mileage_pct %>%</div>
+                </div>
+              <% } else if (v.mileage_current) { %>
+                <span class="text-dim"><%= v.mileage_current.toLocaleString() %> mi</span>
+              <% } else { %><span class="text-dim">—</span><% } %>
+            </td>
+            <td class="text-right" style="font-weight:700;color:var(--primary)">
+              <%= v.monthly_payment ? formatCurrency(v.monthly_payment) : '<span class="text-dim">—</span>' %>
+            </td>
+            <td><span class="badge badge-<%= v.computed_status %>"><%= v.status_label %></span></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+</div>
+</body>
+</html>

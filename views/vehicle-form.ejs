@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Command — <%= isNew ? 'Add Vehicle' : 'Edit Vehicle' %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<%- include('partials/nav', { page: 'vehicles', user }) %>
+
+<div class="page-sm">
+  <a href="<%= isNew ? '/vehicles' : '/vehicles/' + v.id %>" class="back-link">← <%= isNew ? 'Fleet Roster' : 'Vehicle Detail' %></a>
+
+  <div class="page-header">
+    <div class="page-title"><%- isNew ? 'ADD <span>VEHICLE</span>' : 'EDIT <span>VEHICLE</span>' %></div>
+  </div>
+
+  <% if (error) { %>
+    <div class="flash flash-error">⚠ <%= error %></div>
+  <% } %>
+
+  <form method="POST" action="<%= isNew ? '/vehicles/new' : '/vehicles/' + v.id + '?_method=PUT' %>">
+    <% if (!isNew) { %>
+      <input type="hidden" name="_method" value="PUT">
+    <% } %>
+
+    <div class="card">
+      <div class="form-grid">
+        <div class="form-section-title">Vehicle Identification</div>
+        <div class="form-group">
+          <label class="form-label">Unit Number</label>
+          <input class="form-control" type="text" name="unit_number" value="<%= v.unit_number || '' %>" placeholder="e.g. T-142">
+        </div>
+        <div class="form-group">
+          <label class="form-label">VIN</label>
+          <input class="form-control" type="text" name="vin" value="<%= v.vin || '' %>" placeholder="17-char VIN">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Year</label>
+          <input class="form-control" type="number" name="year" value="<%= v.year || '' %>" placeholder="2024" min="1990" max="2035">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Make</label>
+          <input class="form-control" type="text" name="make" value="<%= v.make || '' %>" placeholder="Ford">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Model</label>
+          <input class="form-control" type="text" name="model" value="<%= v.model || '' %>" placeholder="F-150">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trim / Style</label>
+          <input class="form-control" type="text" name="trim" value="<%= v.trim || '' %>" placeholder="XLT">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <input class="form-control" type="text" name="color" value="<%= v.color || '' %>" placeholder="White">
+        </div>
+
+        <div class="form-section-title">Lease Details</div>
+        <div class="form-group">
+          <label class="form-label">Leasing Company</label>
+          <input class="form-control" type="text" name="leasing_company" value="<%= v.leasing_company || '' %>" placeholder="Enterprise">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Lease Start Date</label>
+          <input class="form-control" type="date" name="lease_start" value="<%= v.lease_start || '' %>">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Lease End Date</label>
+          <input class="form-control" type="date" name="lease_end" value="<%= v.lease_end || '' %>">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Monthly Payment ($)</label>
+          <input class="form-control" type="number" step="0.01" name="monthly_payment" value="<%= v.monthly_payment || '' %>" placeholder="850.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total Lease Value ($)</label>
+          <input class="form-control" type="number" step="0.01" name="total_lease_value" value="<%= v.total_lease_value || '' %>" placeholder="20000.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Insurance Expiry</label>
+          <input class="form-control" type="date" name="insurance_expiry" value="<%= v.insurance_expiry || '' %>">
+        </div>
+
+        <div class="form-section-title">Mileage</div>
+        <div class="form-group">
+          <label class="form-label">Current Mileage</label>
+          <input class="form-control" type="number" name="mileage_current" value="<%= v.mileage_current || '' %>" placeholder="45000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Annual Allowance (mi/yr)</label>
+          <input class="form-control" type="number" name="mileage_allowance_annual" value="<%= v.mileage_allowance_annual || '' %>" placeholder="15000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total Contract Allowance (mi)</label>
+          <input class="form-control" type="number" name="mileage_allowance_total" value="<%= v.mileage_allowance_total || '' %>" placeholder="45000">
+        </div>
+
+        <div class="form-section-title">Driver / Assignment</div>
+        <div class="form-group">
+          <label class="form-label">Driver Name</label>
+          <input class="form-control" type="text" name="driver_name" value="<%= v.driver_name || '' %>" placeholder="John Smith">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Driver Email</label>
+          <input class="form-control" type="email" name="driver_email" value="<%= v.driver_email || '' %>" placeholder="john@company.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Driver Phone</label>
+          <input class="form-control" type="tel" name="driver_phone" value="<%= v.driver_phone || '' %>" placeholder="555-0100">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Department / Division</label>
+          <input class="form-control" type="text" name="department" value="<%= v.department || '' %>" placeholder="Operations">
+        </div>
+
+        <div class="form-section-title">Notes</div>
+        <div class="form-group form-full">
+          <label class="form-label">Notes / Comments</label>
+          <textarea class="form-control" name="notes" rows="3" placeholder="Any additional notes..."><%= v.notes || '' %></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-group" style="margin-top:0.5rem">
+      <button type="submit" class="btn btn-primary btn-lg"><%= isNew ? '+ Add Vehicle' : '✓ Save Changes' %></button>
+      <a href="<%= isNew ? '/vehicles' : '/vehicles/' + v.id %>" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<nav class="nav">
+  <a class="nav-brand" href="/">FLEET<span>CMD</span></a>
+  <div class="nav-links">
+    <a class="nav-link <%= page==='dashboard'?'active':'' %>" href="/">Dashboard</a>
+    <a class="nav-link <%= page==='vehicles'?'active':'' %>" href="/vehicles">Fleet</a>
+    <a class="nav-link <%= page==='upload'?'active':'' %>" href="/upload">Upload</a>
+  </div>
+  <div class="nav-user">
+    <span>Welcome, <strong><%= user ? user.name || user.username : '' %></strong></span>
+    <form method="POST" action="/auth/logout" style="margin:0">
+      <button type="submit" class="btn-logout">Logout</button>
+    </form>
+  </div>
+</nav>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Command — Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<%- include('partials/nav', { page: 'dashboard', user }) %>
+
+<div class="page">
+
+  <!-- Flash -->
+  <% if (flash.uploaded != null) { %>
+    <div class="flash flash-success">
+      ✓ Upload complete — <strong><%= flash.uploaded %></strong> vehicles added,
+      <strong><%= flash.updated %></strong> updated.
+    </div>
+  <% } %>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">FLEET <span>DASHBOARD</span></div>
+      <div class="page-sub"><%= totalVehicles %> vehicles in system</div>
+    </div>
+    <div class="btn-group">
+      <a href="/upload" class="btn btn-primary">↑ Upload File</a>
+      <a href="/vehicles/new" class="btn btn-secondary">+ Add Vehicle</a>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stats-grid">
+    <div class="stat-card accent">
+      <a href="/vehicles?status=active">
+        <div class="stat-val"><%= counts.active %></div>
+        <div class="stat-label">Active</div>
+      </a>
+    </div>
+    <div class="stat-card danger">
+      <a href="/vehicles?status=expiring_30">
+        <div class="stat-val"><%= counts.expiring_30 %></div>
+        <div class="stat-label">Expiring &lt; 30d</div>
+      </a>
+    </div>
+    <div class="stat-card warning">
+      <a href="/vehicles?status=expiring_60">
+        <div class="stat-val"><%= counts.expiring_60 + counts.expiring_90 %></div>
+        <div class="stat-label">Expiring 30–90d</div>
+      </a>
+    </div>
+    <div class="stat-card danger">
+      <a href="/vehicles?status=over_mileage">
+        <div class="stat-val"><%= counts.over_mileage %></div>
+        <div class="stat-label">Over Mileage</div>
+      </a>
+    </div>
+    <div class="stat-card warning">
+      <a href="/vehicles?status=near_mileage">
+        <div class="stat-val"><%= counts.near_mileage %></div>
+        <div class="stat-label">Near Limit</div>
+      </a>
+    </div>
+    <div class="stat-card danger">
+      <a href="/vehicles?status=expired">
+        <div class="stat-val"><%= counts.expired %></div>
+        <div class="stat-label">Expired</div>
+      </a>
+    </div>
+    <div class="stat-card">
+      <a href="/vehicles?status=returned">
+        <div class="stat-val"><%= counts.returned %></div>
+        <div class="stat-label">Returned</div>
+      </a>
+    </div>
+    <div class="stat-card primary">
+      <div class="stat-val"><%= formatCurrency(Math.round(monthlyTotal)) %></div>
+      <div class="stat-label">Monthly Spend</div>
+    </div>
+  </div>
+
+  <!-- Alert Grid -->
+  <% if (expiringSoon.length || overMileage.length) { %>
+  <div class="alert-grid">
+
+    <!-- Expiring Soon -->
+    <% if (expiringSoon.length) { %>
+    <div class="card card-sm">
+      <div class="section-header">
+        <div class="section-title danger">⚠ Expiring Leases</div>
+        <a href="/vehicles?status=expiring_30" class="btn btn-ghost btn-sm">View All</a>
+      </div>
+      <ul class="alert-list">
+        <% expiringSoon.slice(0,8).forEach(v => { %>
+        <li class="alert-item">
+          <div>
+            <a href="/vehicles/<%= v.id %>"><%= v.unit_number || v.vin || 'Unit' %></a>
+            <div class="alert-meta"><%= v.year ? v.year + ' ' : '' %><%= v.make || '' %> <%= v.model || '' %> • <%= v.driver_name || '—' %></div>
+          </div>
+          <div class="alert-badge">
+            <% const badgeClass = v.computed_status; %>
+            <span class="badge badge-<%= badgeClass %>">
+              <%= v.days_left != null ? (v.days_left < 0 ? 'EXPIRED' : v.days_left + 'd') : '—' %>
+            </span>
+          </div>
+        </li>
+        <% }) %>
+      </ul>
+    </div>
+    <% } %>
+
+    <!-- Over Mileage -->
+    <% if (overMileage.length) { %>
+    <div class="card card-sm">
+      <div class="section-header">
+        <div class="section-title danger">⚠ Mileage Alerts</div>
+        <a href="/vehicles?status=over_mileage" class="btn btn-ghost btn-sm">View All</a>
+      </div>
+      <ul class="alert-list">
+        <% overMileage.slice(0,8).forEach(v => { %>
+        <li class="alert-item">
+          <div>
+            <a href="/vehicles/<%= v.id %>"><%= v.unit_number || v.vin || 'Unit' %></a>
+            <div class="alert-meta"><%= v.year ? v.year + ' ' : '' %><%= v.make || '' %> <%= v.model || '' %> • <%= v.driver_name || '—' %></div>
+          </div>
+          <div class="alert-badge">
+            <span class="badge badge-<%= v.computed_status %>"><%= v.mileage_pct != null ? v.mileage_pct + '%' : '—' %></span>
+          </div>
+        </li>
+        <% }) %>
+      </ul>
+    </div>
+    <% } %>
+
+  </div>
+  <% } %>
+
+  <!-- Bottom Row: Top Cost + Recent Uploads -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+
+    <!-- Top Cost Vehicles -->
+    <div class="card card-sm">
+      <div class="section-header">
+        <div class="section-title">💰 Highest Monthly Cost</div>
+        <a href="/vehicles" class="btn btn-ghost btn-sm">All Fleet</a>
+      </div>
+      <% if (topCost.length) { %>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Vehicle</th><th>Driver</th><th class="text-right">$/mo</th>
+          </tr></thead>
+          <tbody>
+            <% topCost.forEach((v, i) => { %>
+            <tr>
+              <td class="cost-rank"><%= i + 1 %></td>
+              <td><a href="/vehicles/<%= v.id %>"><%= v.unit_number || (v.year + ' ' + (v.make||'') + ' ' + (v.model||'')) || v.vin || '—' %></a></td>
+              <td class="text-dim"><%= v.driver_name || '—' %></td>
+              <td class="text-right" style="color:var(--primary);font-weight:700"><%= formatCurrency(v.monthly_payment) %></td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% } else { %>
+        <div class="empty-state" style="padding:1.5rem">
+          <div class="text-dim" style="font-size:0.85rem">No payment data yet</div>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Recent Uploads -->
+    <div class="card card-sm">
+      <div class="section-header">
+        <div class="section-title">📁 Recent Uploads</div>
+        <a href="/upload" class="btn btn-primary btn-sm">↑ Upload</a>
+      </div>
+      <% if (recentUploads.length) { %>
+      <ul class="uploads-list">
+        <% recentUploads.forEach(u => { %>
+        <li class="upload-row">
+          <div>
+            <div class="upload-name"><%= u.original_name %></div>
+            <div class="upload-stats"><%= new Date(u.uploaded_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) %></div>
+          </div>
+          <div class="upload-stats" style="text-align:right">
+            <span style="color:var(--accent)">+<%= u.inserted %></span> /
+            <span style="color:var(--secondary)">↻<%= u.updated %></span>
+            <div><%= u.row_count %> rows</div>
+          </div>
+        </li>
+        <% }) %>
+      </ul>
+      <% } else { %>
+        <div class="empty-state" style="padding:1.5rem">
+          <div class="text-dim" style="font-size:0.85rem">No uploads yet — <a href="/upload" style="color:var(--primary)">upload a fleet file</a></div>
+        </div>
+      <% } %>
+    </div>
+
+  </div>
+
+  <!-- Empty state when no vehicles -->
+  <% if (totalVehicles === 0) { %>
+  <div class="empty-state card" style="margin-top:1.5rem">
+    <div class="empty-icon">🚛</div>
+    <div class="empty-title">NO FLEET DATA YET</div>
+    <p style="color:var(--text-dim);margin-bottom:1.5rem">Upload a CSV or Excel file from your leasing company to get started.</p>
+    <a href="/upload" class="btn btn-primary btn-lg">↑ Upload Fleet File</a>
+  </div>
+  <% } %>
+
+</div>
+</body>
+</html>

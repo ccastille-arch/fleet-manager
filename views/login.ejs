@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Command — Login</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="login-page">
+  <canvas class="login-canvas" id="bgCanvas"></canvas>
+
+  <div class="login-box">
+    <div class="login-brand">FLEET<span>CMD</span></div>
+    <div class="login-sub">Fleet Command Center</div>
+
+    <% if (error) { %>
+      <div class="flash flash-error">⚠ <%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/auth/login" autocomplete="on">
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label">Username</label>
+        <input class="form-control" type="text" name="username" placeholder="username" autocomplete="username" required autofocus>
+      </div>
+      <div class="form-group" style="margin-bottom:1.5rem">
+        <label class="form-label">Password</label>
+        <input class="form-control" type="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center">
+        ⚡ ENGAGE
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, pipes = [], particles = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Horizontal pipeline segments
+  for (let i = 0; i < 8; i++) {
+    pipes.push({
+      y: Math.random() * H,
+      x: Math.random() * W,
+      len: 120 + Math.random() * 300,
+      speed: 0.3 + Math.random() * 0.5,
+      alpha: 0.04 + Math.random() * 0.08,
+    });
+  }
+
+  // Flow particles
+  for (let i = 0; i < 40; i++) {
+    particles.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      speed: 0.4 + Math.random() * 1.2,
+      size: 1 + Math.random() * 2,
+      alpha: 0.1 + Math.random() * 0.3,
+      color: Math.random() > 0.6 ? '#ff6b00' : '#00c8e8',
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Pipeline lines
+    pipes.forEach(p => {
+      ctx.strokeStyle = `rgba(0,200,232,${p.alpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + p.len, p.y);
+      ctx.stroke();
+
+      // End caps
+      ctx.fillStyle = `rgba(255,107,0,${p.alpha * 2})`;
+      ctx.beginPath();
+      ctx.arc(p.x + p.len, p.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      p.x += p.speed;
+      if (p.x > W + 50) p.x = -p.len - 50;
+    });
+
+    // Flow particles
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      p.x += p.speed;
+      if (p.x > W + 5) p.x = -5;
+    });
+    ctx.globalAlpha = 1;
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
