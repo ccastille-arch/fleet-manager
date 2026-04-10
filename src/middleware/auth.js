@@ -1,6 +1,18 @@
 const express = require('express');
 const router  = express.Router();
 
+// Sensible defaults so SSO works without manually setting every env var
+const SSO_URL         = () => process.env.SSO_URL         || 'https://askcody.up.railway.app';
+const SSO_CLIENT_ID   = () => process.env.SSO_CLIENT_ID   || 'fleet-manager-app';
+const SSO_CLIENT_SECRET = () => process.env.SSO_CLIENT_SECRET || 'fleet-sso-secret-v1-change-in-prod';
+
+function getCallbackUrl(req) {
+  // Self-detect — works on Railway (https) and localhost (http) without APP_URL
+  const host     = req.get('host');
+  const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  return `${protocol}://${host}/auth/callback`;
+}
+
 function requireAuth(req, res, next) {
   if (req.session && req.session.user) return next();
   res.redirect('/auth/login');
@@ -9,89 +21,63 @@ function requireAuth(req, res, next) {
 // GET /auth/login
 router.get('/login', (req, res) => {
   if (req.session?.user) return res.redirect('/');
-  res.render('login', { error: null, user: null });
+  const error = req.query.error || null;
+  res.render('login', { error, user: null });
 });
 
-// POST /auth/login — local auth mode
+// POST /auth/login — local auth fallback
 router.post('/login', (req, res) => {
   const { username, password } = req.body || {};
+  const isUser  = username === process.env.LOCAL_USERNAME  && password === process.env.LOCAL_PASSWORD;
+  const isAdmin = username === process.env.ADMIN_USERNAME  && password === process.env.ADMIN_PASSWORD;
 
-  if (process.env.LOCAL_AUTH === 'true') {
-    const isUser  = username === process.env.LOCAL_USERNAME  && password === process.env.LOCAL_PASSWORD;
-    const isAdmin = username === process.env.ADMIN_USERNAME  && password === process.env.ADMIN_PASSWORD;
-
-    if (isUser || isAdmin) {
-      req.session.user = {
-        username,
-        name:  isAdmin ? (process.env.ADMIN_NAME || username) : username,
-        role:  isAdmin ? 'admin' : 'user',
-      };
-      return req.session.save(() => res.redirect('/'));
-    }
-    return res.render('login', { error: 'Invalid username or password.', user: null });
+  if (isUser || isAdmin) {
+    req.session.user = {
+      username,
+      name: isAdmin ? (process.env.ADMIN_NAME || username) : username,
+      role: isAdmin ? 'admin' : 'user',
+    };
+    return req.session.save(() => res.redirect('/'));
   }
-
-  // SSO mode — redirect to SSO authorize
-  res.redirect('/auth/sso');
+  res.render('login', { error: 'Invalid username or password.', user: null });
 });
 
-// GET /auth/sso — starts OAuth2 flow toward SSO portal
-router.get('/sso', (req, res) => {
-  const ssoUrl    = process.env.SSO_URL    || '';
-  const clientId  = process.env.SSO_CLIENT_ID || '';
-  const appUrl    = process.env.APP_URL    || '';
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id:     clientId,
-    redirect_uri:  `${appUrl}/auth/callback`,
-    scope:         'openid profile',
-  });
-  res.redirect(`${ssoUrl}/oauth/authorize?${params}`);
-});
-
-// GET /auth/callback — exchanges OAuth2 code for session
+// GET /auth/callback — handles OAuth2 code from SSO portal
+// This is the primary entry point when coming from askcody.up.railway.app
 router.get('/callback', async (req, res) => {
   const { code } = req.query;
+
+  // No code — just show login page
   if (!code) return res.redirect('/auth/login');
 
-  const ssoUrl      = process.env.SSO_URL    || '';
-  const clientId    = process.env.SSO_CLIENT_ID    || '';
-  const clientSecret= process.env.SSO_CLIENT_SECRET || '';
-  const appUrl      = process.env.APP_URL    || '';
-  const redirectUri = `${appUrl}/auth/callback`;
+  const redirectUri = getCallbackUrl(req);
 
   try {
-    // Exchange code for tokens
-    const tokenRes = await fetch(`${ssoUrl}/oauth/token`, {
+    const tokenRes = await fetch(`${SSO_URL()}/oauth/token`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body:    new URLSearchParams({
         grant_type:    'authorization_code',
         code,
         redirect_uri:  redirectUri,
-        client_id:     clientId,
-        client_secret: clientSecret,
+        client_id:     SSO_CLIENT_ID(),
+        client_secret: SSO_CLIENT_SECRET(),
       }),
     });
 
-    if (!tokenRes.ok) {
-      const err = await tokenRes.text();
-      console.error('SSO token error:', err);
-      return res.render('login', { error: 'SSO login failed — token exchange error.', user: null });
-    }
-
     const tokens = await tokenRes.json();
+
     if (!tokens.access_token) {
-      return res.render('login', { error: 'SSO login failed — no access token.', user: null });
+      console.error('SSO token exchange failed:', tokens);
+      return res.redirect('/auth/login?error=sso_failed');
     }
 
-    // Fetch user info
-    const userRes = await fetch(`${ssoUrl}/oauth/userinfo`, {
+    const userRes = await fetch(`${SSO_URL()}/oauth/userinfo`, {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
 
     if (!userRes.ok) {
-      return res.render('login', { error: 'SSO login failed — userinfo error.', user: null });
+      return res.redirect('/auth/login?error=sso_failed');
     }
 
     const info = await userRes.json();
@@ -105,7 +91,7 @@ router.get('/callback', async (req, res) => {
     req.session.save(() => res.redirect('/'));
   } catch (e) {
     console.error('SSO callback error:', e.message);
-    res.render('login', { error: 'SSO login failed. Please try again.', user: null });
+    res.redirect('/auth/login?error=sso_failed');
   }
 });
 

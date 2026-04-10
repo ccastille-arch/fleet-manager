@@ -14,8 +14,11 @@
     <div class="login-brand">FLEET<span>CMD</span></div>
     <div class="login-sub">Fleet Command Center</div>
 
-    <% if (error) { %>
-      <div class="flash flash-error">⚠ <%= error %></div>
+    <% const displayError = error === 'sso_failed'
+         ? 'SSO auto-login failed — enter credentials manually below.'
+         : error; %>
+    <% if (displayError) { %>
+      <div class="flash flash-error">⚠ <%= displayError %></div>
     <% } %>
 
     <form method="POST" action="/auth/login" autocomplete="on">
